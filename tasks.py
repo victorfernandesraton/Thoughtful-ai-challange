@@ -1,13 +1,17 @@
 from robocorp.tasks import task
 
+from aljazeera_service import AljazeeraService
 from browser import Browser
 
 
 @task
-def search_news(query, category, months=0):
+def search_news():
     browser = Browser()
-    browser.open_url("https://apnews.com/")
+    browser.set_webdriver()
+    service = AljazeeraService(browser)
+    service.search_for_query("brazil")
+    service.extract_content()
 
 
 if __name__ == "__main__":
-    search_news("brazil", "Finance")
+    search_news()
