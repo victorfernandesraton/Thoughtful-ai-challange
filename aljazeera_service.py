@@ -1,5 +1,8 @@
+from datetime import datetime
 from enum import Enum
+from typing import List
 
+from bs4 import BeautifulSoup
 from robocorp import log
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -8,6 +11,7 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
 from browser import Browser
+from domain import Article
 
 
 class AljazeeraSelectOrderOptions(Enum):
@@ -20,6 +24,7 @@ class AljazeeraService:
     BTN_SEARCH_SELECTOR = (By.XPATH, "//button/span[text()='Click here to search']/..")
     INPUT_SEARCH_SELECTOR = (By.XPATH, "//input[@placeholder='Search']")
     SELECT_ORDER_BY_SELECTOR = (By.XPATH, "//select[@id='search-sort-option']")
+    SELECT_ARTICLES_SELECTOR = (By.CSS_SELECTOR, ".search-result__list")
 
     def __init__(self, browser: Browser, timeout=30):
         self.browser = browser
@@ -53,5 +58,42 @@ class AljazeeraService:
         select = Select(select_el)
         select.select_by_value(option.value)
 
-    def extract_content(self):
-        pass
+    def extract_content(self) -> List[Article]:
+        result = []
+        article_div = self.waiter.until(
+            EC.presence_of_element_located(self.SELECT_ARTICLES_SELECTOR)
+        )
+        soup = BeautifulSoup(article_div.get_attribute("outerHTML"), "html.parser")
+
+        # Find all articles
+        articles = soup.find_all(
+            "article",
+            class_="gc u-clickable-card gc--type-customsearch#result gc--list gc--with-image",
+        )
+
+        # Iterate over each article and extract details
+        for article in articles:
+            title_tag = article.find("h3", class_="gc__title").find("a")
+            title = title_tag.get_text(strip=True) if title_tag else "No title"
+
+            link = title_tag["href"] if title_tag else "No link"
+
+            excerpt_tag = article.find("div", class_="gc__excerpt").find("p")
+            content = excerpt_tag.get_text(strip=True) if excerpt_tag else "No content"
+
+            date_tag = article.find("div", class_="gc__date__date")
+            date = (
+                datetime.strptime(
+                    date_tag.get_text(strip=True)[-11:], "%d %b %Y"
+                ).date()
+                if date_tag
+                else None
+            )
+
+            post = Article(
+                title=title,
+                content=content,
+                url=link,
+                date=date,
+            )
+            result.append(post)
