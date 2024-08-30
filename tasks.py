@@ -9,8 +9,7 @@ def search_news():
     browser = Browser()
     browser.set_webdriver()
     service = AljazeeraService(browser)
-    service.search_for_query("brazil")
-    service.extract_content()
+    service.execute("brazil")
 
 
 if __name__ == "__main__":

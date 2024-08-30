@@ -32,6 +32,16 @@ class AljazeeraService:
         self.waiter = WebDriverWait(self.browser.driver, self.timeout)
         self.browser.open_url(self.DOMAIN)
 
+    def execute(self, query: str, option="date") -> List[Article]:
+        self.search_for_query(query)
+        self.select_order_by(AljazeeraSelectOrderOptions(option))
+
+        return self.extract_content(query)
+
+    def __validate_string_to_option_enum(value_str):
+        enum_member = AljazeeraSelectOrderOptions(value_str)
+        return enum_member
+
     def search_for_query(self, query: str):
         btn_serach = self.waiter.until(
             EC.presence_of_element_located(self.BTN_SEARCH_SELECTOR)
@@ -49,8 +59,6 @@ class AljazeeraService:
         input_search.send_keys(query)
         input_search.send_keys(Keys.ENTER)
 
-        self.select_order_by(AljazeeraSelectOrderOptions.RELEVANCE)
-
     def select_order_by(self, option: AljazeeraSelectOrderOptions):
         select_el = self.waiter.until(
             EC.presence_of_element_located(self.SELECT_ORDER_BY_SELECTOR)
@@ -58,7 +66,7 @@ class AljazeeraService:
         select = Select(select_el)
         select.select_by_value(option.value)
 
-    def extract_content(self) -> List[Article]:
+    def extract_content(self, query: str) -> List[Article]:
         result = []
         article_div = self.waiter.until(
             EC.presence_of_element_located(self.SELECT_ARTICLES_SELECTOR)
@@ -91,8 +99,9 @@ class AljazeeraService:
             )
 
             post = Article(
+                search_query=query,
                 title=title,
-                content=content,
+                description=content,
                 url=link,
                 date=date,
             )
