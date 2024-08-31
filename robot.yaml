@@ -7,6 +7,7 @@ tasks:
     variables:
       query: brazil
       order_by: date
+      months: 0
   Run Task:
     shell: python -m robocorp.tasks run tasks.py
 

@@ -2,11 +2,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import date
-from io import BytesIO
-from os import getcwd, path
 from typing import List, Optional, Tuple
-
-from PIL import Image
 
 
 @dataclass
@@ -60,16 +56,6 @@ class Article:
         if not isinstance(other, Article):
             return NotImplemented
         return self.hash == other.hash
-
-    def get_image_path(self, content: bytes) -> str:
-        img_data = BytesIO(content)
-        img = Image.open(img_data)
-        img_format = img.format.lower()
-        file_extension = img_format if img_format else "png"
-
-        return path.join(
-            getcwd(), "extracted", "images", f"{self._image_hash}.{file_extension}"
-        )
 
     def __count_money_occurrences(self, combined_text) -> int:
         """

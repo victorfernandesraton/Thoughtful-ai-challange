@@ -1,10 +1,12 @@
 from datetime import datetime
+from io import BytesIO
 from os import getcwd, path
 from pathlib import Path
 from typing import List
 
 import httpx
 import pandas as pd
+from PIL import Image
 
 from domain import Article
 from locallogger import logger
@@ -15,7 +17,7 @@ class ExporterService:
         self.articles = articles
         self.excel_path = path.join(
             getcwd(),
-            "extracted",
+            "output",
             "excel",
             datetime.today().strftime("%Y-%m-%d-%H:%M:%S.xls"),
         )
@@ -27,13 +29,11 @@ class ExporterService:
 
         self.generate_excel_from_articles(self.articles, self.excel_path)
 
-    @staticmethod
-    def download_image(article: Article) -> None:
+    def download_image(self, article: Article) -> None:
         logger.info(f"Download image {article.img_url}")
         response = httpx.get(article.img_url)
         response.raise_for_status()
-
-        file_path = article.get_image_path(response.content)
+        file_path = self.get_image_path(article=article, content=response.content)
         path = Path(file_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(file_path, "wb") as file:
@@ -60,3 +60,14 @@ class ExporterService:
         df.to_excel(file_path, index=False, engine="openpyxl")
 
         logger.info(f"Excel file created: {file_path}")
+
+    @staticmethod
+    def get_image_path(article: Article, content: bytes) -> str:
+        img_data = BytesIO(content)
+        img = Image.open(img_data)
+        img_format = img.format.lower()
+        file_extension = img_format if img_format else "png"
+
+        return path.join(
+            getcwd(), "output", "images", f"{article.image_hash}.{file_extension}"
+        )
