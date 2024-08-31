@@ -1,5 +1,5 @@
+import hashlib
 import re
-import uuid
 from dataclasses import dataclass, field
 from datetime import date
 from io import BytesIO
@@ -16,7 +16,8 @@ class Article:
     description: str
     url: str
     img_url: Optional[str] = None
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    _hash: str = field(init=False, repr=False)
+    _image_hash: str = field(init=False, repr=False)
     date: date = field(default_factory=date.today())
     total_query_occour: int = field(init=False)
     has_money_str: bool = field(init=False)
@@ -31,15 +32,34 @@ class Article:
         self.has_money_str = self.__count_money_occurrences(
             self.title + self.description
         )
-        self.id = hash(self.url)
+        self._hash = self._compute_hash()
+        self._image_hash = self._compute_image_hash()
 
-    def __hash__(self):
-        return hash(self.url)
+    def _compute_hash(self) -> str:
+        hash_func = hashlib.sha256()
+        hash_func.update(self.url.encode("utf-8"))
+        return hash_func.hexdigest()
 
-    def __eq__(self, other):
-        if isinstance(other, Article):
-            return self.url == other.url
-        return False
+    def _compute_image_hash(self) -> str:
+        hash_func = hashlib.sha256()
+        hash_func.update(self.img_url.encode("utf-8"))
+        return hash_func.hexdigest()
+
+    @property
+    def hash(self) -> str:
+        return self._hash
+
+    @property
+    def image_hash(self) -> str:
+        return self._image_hash
+
+    def __hash__(self) -> int:
+        return int(self._hash, 16)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Article):
+            return NotImplemented
+        return self.hash == other.hash
 
     def get_image_path(self, content: bytes) -> str:
         img_data = BytesIO(content)
@@ -47,7 +67,9 @@ class Article:
         img_format = img.format.lower()
         file_extension = img_format if img_format else "png"
 
-        return path.join(getcwd(), "extracted", "images", f"{self.id}.{file_extension}")
+        return path.join(
+            getcwd(), "extracted", "images", f"{self._image_hash}.{file_extension}"
+        )
 
     def __count_money_occurrences(self, combined_text) -> int:
         """

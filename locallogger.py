@@ -1,7 +1,7 @@
 import logging
 
-logger = logging.getLogger("GlobalLogger")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("LocalLogger")
+logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler("local.log")
 file_handler.setLevel(logging.INFO)
@@ -12,6 +12,5 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # Adjust level for console output
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
