@@ -1,7 +1,12 @@
 import re
+import uuid
 from dataclasses import dataclass, field
 from datetime import date
+from io import BytesIO
+from os import getcwd, path
 from typing import List, Optional, Tuple
+
+from PIL import Image
 
 
 @dataclass
@@ -11,6 +16,7 @@ class Article:
     description: str
     url: str
     img_url: Optional[str] = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
     date: date = field(default_factory=date.today())
     total_query_occour: int = field(init=False)
     has_money_str: bool = field(init=False)
@@ -25,16 +31,23 @@ class Article:
         self.has_money_str = self.__count_money_occurrences(
             self.title + self.description
         )
+        self.id = hash(self.url)
 
     def __hash__(self):
-        # Use unique_id for hashing
         return hash(self.url)
 
     def __eq__(self, other):
-        # Define equality based on unique_id
         if isinstance(other, Article):
             return self.url == other.url
         return False
+
+    def get_image_path(self, content: bytes) -> str:
+        img_data = BytesIO(content)
+        img = Image.open(img_data)
+        img_format = img.format.lower()
+        file_extension = img_format if img_format else "png"
+
+        return path.join(getcwd(), "extracted", "images", f"{self.id}.{file_extension}")
 
     def __count_money_occurrences(self, combined_text) -> int:
         """

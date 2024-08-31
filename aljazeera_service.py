@@ -3,7 +3,6 @@ from enum import Enum
 from typing import List
 
 from bs4 import BeautifulSoup, PageElement
-from robocorp import log
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     NoSuchElementException,
@@ -17,6 +16,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from browser import Browser
 from domain import Article, filter_articles_by_valid_months, valid_months_in_ratio
+from locallogger import logger
 
 
 class AljazeeraSelectOrderOptions(Enum):
@@ -74,7 +74,7 @@ class AljazeeraService:
                     break
 
             break
-        return result
+        return list(result)
 
     def __click_get_more(self) -> bool:
         try:
@@ -101,14 +101,14 @@ class AljazeeraService:
         btn_serach = self.waiter.until(
             EC.visibility_of_element_located(self.BUTTON_SEARCH_SELECTOR)
         )
-        log.info("Found button search")
+        logger.info("Found button search")
         btn_serach.click()
 
         input_search = self.waiter.until(
             EC.presence_of_element_located(self.INPUT_SEARCH_SELECTOR)
         )
 
-        log.info("Found input search")
+        logger.info("Found input search")
 
         input_search.clear()
         input_search.send_keys(query)
@@ -145,13 +145,13 @@ class AljazeeraService:
                 EC.presence_of_element_located(self.BUTTON_ACCEPT_COOKIE_SELECTOR)
             )
             accept_cookie.click()
-            print("Accept cookies modal")
+            logger.info("Accept cookies modal")
         except (
             NoSuchElementException,
             TimeoutException,
             ElementClickInterceptedException,
         ):
-            print("Not found accept cookies modal")
+            logger.info("Not found accept cookies modal")
 
     def __get_article(self, query: str, article: PageElement) -> Article:
         title_tag = article.find("h3", class_="gc__title").find("a")

@@ -3,6 +3,7 @@ from robocorp.tasks import task
 
 from aljazeera_service import AljazeeraService
 from browser import Browser
+from exporter import download_image
 
 
 @task
@@ -14,7 +15,8 @@ def search_news():
         results = service.execute(
             item.payload["query"], item.payload["order_by"], item.payload["months"]
         )
-        print(len(results))
+        for i, result in enumerate(results):
+            download_image(result)
 
 
 def proccess_news():
