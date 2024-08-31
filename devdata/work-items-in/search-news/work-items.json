@@ -3,7 +3,7 @@
     "payload": {
       "query": "brasil",
       "order_by": "date",
-      "months": 0
+      "months": 4
     }
 
   }
