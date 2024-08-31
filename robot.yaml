@@ -4,18 +4,9 @@
 tasks:
   Version command:
     shell: python -m robot --version
-  Multiline command:
-    command:
-      - python
-      - -m
-      - robot
-      - --query
-      - Brazil
-      - -d
-      - output
-      - --logtitle
-      - Task log
-      - tasks.robot
+    variables:
+      query: brazil
+      order_by: date
   Run Task:
     shell: python -m robocorp.tasks run tasks.py
 

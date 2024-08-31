@@ -4,6 +4,11 @@ from typing import List
 
 from bs4 import BeautifulSoup
 from robocorp import log
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    TimeoutException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,7 +16,7 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
 from browser import Browser
-from domain import Article
+from domain import Article, filter_articles_by_valid_months, valid_months_in_ratio
 
 
 class AljazeeraSelectOrderOptions(Enum):
@@ -24,7 +29,9 @@ class AljazeeraService:
     BTN_SEARCH_SELECTOR = (By.XPATH, "//button/span[text()='Click here to search']/..")
     INPUT_SEARCH_SELECTOR = (By.XPATH, "//input[@placeholder='Search']")
     SELECT_ORDER_BY_SELECTOR = (By.XPATH, "//select[@id='search-sort-option']")
-    SELECT_ARTICLES_SELECTOR = (By.CSS_SELECTOR, ".search-result__list")
+    ARTICLES_SELECTOR = (By.CSS_SELECTOR, ".search-result__list")
+    BUTTON_SHOW_MORE_SELECTOR = (By.CSS_SELECTOR, "button.show-more-button")
+    DIV_LOADING_SELECTOR = (By.CSS_SELECTOR, "div.loading-animation")
 
     def __init__(self, browser: Browser, timeout=30):
         self.browser = browser
@@ -32,11 +39,42 @@ class AljazeeraService:
         self.waiter = WebDriverWait(self.browser.driver, self.timeout)
         self.browser.open_url(self.DOMAIN)
 
-    def execute(self, query: str, option="date") -> List[Article]:
+    def execute(self, query: str, option="date", months=0) -> List[Article]:
+        result = set()
         self.search_for_query(query)
         self.select_order_by(AljazeeraSelectOrderOptions(option))
+        valid_months = valid_months_in_ratio(date=datetime.today().date(), ratio=months)
+        while True:
+            self.waiter.until_not(
+                EC.presence_of_element_located(self.DIV_LOADING_SELECTOR)
+            )
+            chunk = self.extract_content(query)
+            filter_chunk = filter_articles_by_valid_months(
+                articles=chunk, valid_months=valid_months
+            )
+            if len(filter_chunk):
+                result.update(filter_chunk)
+            last_chunk = chunk[-1]
+            last_valid_month = valid_months[-1]
+            if (
+                last_chunk.date.year >= last_valid_month[0]
+                and last_chunk.date.month >= last_valid_month[1]
+            ):
+                try:
+                    show_more_button = self.waiter.until(
+                        EC.presence_of_element_located(self.BUTTON_SHOW_MORE_SELECTOR)
+                    )
+                    show_more_button.click()
+                    continue
+                except (
+                    NoSuchElementException,
+                    TimeoutException,
+                    ElementClickInterceptedException,
+                ):
+                    break
 
-        return self.extract_content(query)
+            break
+        return result
 
     def __validate_string_to_option_enum(value_str):
         enum_member = AljazeeraSelectOrderOptions(value_str)
@@ -44,7 +82,7 @@ class AljazeeraService:
 
     def search_for_query(self, query: str):
         btn_serach = self.waiter.until(
-            EC.presence_of_element_located(self.BTN_SEARCH_SELECTOR)
+            EC.visibility_of_element_located(self.BTN_SEARCH_SELECTOR)
         )
         log.info("Found button search")
         btn_serach.click()
@@ -69,7 +107,7 @@ class AljazeeraService:
     def extract_content(self, query: str) -> List[Article]:
         result = []
         article_div = self.waiter.until(
-            EC.presence_of_element_located(self.SELECT_ARTICLES_SELECTOR)
+            EC.presence_of_element_located(self.ARTICLES_SELECTOR)
         )
         soup = BeautifulSoup(article_div.get_attribute("outerHTML"), "html.parser")
 
@@ -89,14 +127,14 @@ class AljazeeraService:
             excerpt_tag = article.find("div", class_="gc__excerpt").find("p")
             content = excerpt_tag.get_text(strip=True) if excerpt_tag else "No content"
 
-            date_tag = article.find("div", class_="gc__date__date")
+            date_spans = article.select("footer div.gc__date__date > div > span")
             date = (
-                datetime.strptime(
-                    date_tag.get_text(strip=True)[-11:], "%d %b %Y"
-                ).date()
-                if date_tag
+                datetime.strptime(date_spans[-1].text.rstrip()[-11:], "%d %b %Y").date()
+                if len(date_spans)
                 else None
             )
+            img_tag = article.find("img", class_="article-card__image gc__image")
+            img_url = img_tag["src"] if img_tag else None
 
             post = Article(
                 search_query=query,
@@ -104,5 +142,8 @@ class AljazeeraService:
                 description=content,
                 url=link,
                 date=date,
+                img_url=img_url,
             )
             result.append(post)
+
+        return result
