@@ -47,7 +47,7 @@ class ExporterService:
                 "url": article.url,
                 "picture_filename": article.image_hash,
                 "date": article.date,
-                "total_query_occour": article.total_query_occour,
+                "total_query_occour": article.count_query_occour,
                 "has_money_str": article.has_money_str,
             }
             for article in articles

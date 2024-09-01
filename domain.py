@@ -15,19 +15,11 @@ class Article:
     _hash: str = field(init=False, repr=False)
     _image_hash: str = field(init=False, repr=False)
     date: date = field(default_factory=date.today())
-    total_query_occour: int = field(init=False)
-    has_money_str: bool = field(init=False)
 
     def __post_init__(self):
         if self.date is None:
             self.date = date.today()
 
-        self.total_query_occour = self.description.lower().count(
-            self.search_query.lower()
-        ) + self.title.lower().count(self.search_query.lower())
-        self.has_money_str = self.__count_money_occurrences(
-            self.title + self.description
-        )
         self._hash = self._compute_hash()
         self._image_hash = self._compute_image_hash()
 
@@ -49,6 +41,20 @@ class Article:
     def image_hash(self) -> str:
         return self._image_hash
 
+    @property
+    def count_query_occour(self) -> str:
+        return self.description.lower().count(
+            self.search_query.lower()
+        ) + self.title.lower().count(self.search_query.lower())
+
+    @property
+    def has_money_str(self) -> bool:
+        pattern = r"(\$[\d.,]+)|([\d.,]+\s+dollars)|([\d.,]+\s+USD)"
+        for text in [self.title, self.description]:
+            if re.search(pattern, text):
+                return True
+        return False
+
     def __hash__(self) -> int:
         return int(self._hash, 16)
 
@@ -56,23 +62,6 @@ class Article:
         if not isinstance(other, Article):
             return NotImplemented
         return self.hash == other.hash
-
-    def __count_money_occurrences(self, combined_text) -> int:
-        """
-        Count occurrences of monetary values in both texts.
-        Monetary formats handled:
-        - $11.1
-        - $111,111.11
-        - 11 dollars
-        - 11 USD
-        """
-        money_pattern = (
-            r"\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+\.?\d*\s?(?:dollars|USD|usd)?"
-        )
-
-        matches = re.findall(money_pattern, combined_text, re.IGNORECASE)
-
-        return bool(matches)
 
 
 def valid_months_in_ratio(date=date.today(), ratio=0):
