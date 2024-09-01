@@ -15,5 +15,6 @@ def search_news():
         results = service.execute(
             item.payload["query"], item.payload["order_by"], item.payload["months"]
         )
+        service.browser.driver_quit()
         exportation = ExporterService(results)
         exportation.execute()
