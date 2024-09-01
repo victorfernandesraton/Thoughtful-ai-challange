@@ -1,6 +1,6 @@
 from datetime import datetime
 from io import BytesIO
-from os import getcwd, path
+from os import path
 from pathlib import Path
 from typing import List
 
@@ -16,9 +16,7 @@ class ExporterService:
     def __init__(self, articles: List[Article]):
         self.articles = articles
         self.excel_path = path.join(
-            getcwd(),
             "output",
-            "excel",
             datetime.today().strftime("%Y-%m-%d-%H:%M:%S.xls"),
         )
         Path(self.excel_path).parent.mkdir(parents=True, exist_ok=True)
@@ -68,6 +66,4 @@ class ExporterService:
         img_format = img.format.lower()
         file_extension = img_format if img_format else "png"
 
-        return path.join(
-            getcwd(), "output", "images", f"{article.image_hash}.{file_extension}"
-        )
+        return path.join("output", f"{article.image_hash}.{file_extension}")
